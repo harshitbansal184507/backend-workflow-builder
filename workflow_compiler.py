@@ -225,7 +225,6 @@ def compile_workflow(workflow_data: Dict[str, Any],
             
             node_functions[node_id] = create_output_node(node_id)
     
-    # Add nodes to graph
     for node_id, node_func in node_functions.items():
         workflow.add_node(node_id, node_func)
     
@@ -274,7 +273,6 @@ def compile_workflow(workflow_data: Dict[str, Any],
             )
             print(f"✓ Added conditional edges for {node_id}")
         
-        # Handle regular edges
         elif node_id in edge_map:
             for target in edge_map[node_id]:
                 workflow.add_edge(node_id, target)
