@@ -34,6 +34,7 @@ class Edge(BaseModel):
     source: str
     target: str
     type: Optional[str] = "default"
+    data : dict[str, Any] = {}
 
 
 class WorkflowDefinition(BaseModel):
