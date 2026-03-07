@@ -1,0 +1,964 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Workflow Builder</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --bg: #f0f2f5;
+        --card: #ffffff;
+        --border: #e1e4e8;
+        --text: #24292e;
+        --muted: #6a737d;
+        --blue: #0366d6;
+        --green: #28a745;
+        --red: #d73a49;
+        --yellow: #f6c343;
+        --radius: 8px;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        padding: 20px;
+        font-size: 14px;
+      }
+
+      h1 {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      h3 {
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      @media (max-width: 700px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+      }
+
+      /* Status bar */
+      #status-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        border-radius: var(--radius);
+        background: var(--card);
+        border: 1px solid var(--border);
+        margin-bottom: 16px;
+        max-width: 1100px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      #status-bar .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #ccc;
+        flex-shrink: 0;
+      }
+      #status-bar.connected .dot {
+        background: var(--green);
+      }
+      #status-bar.running .dot {
+        background: var(--yellow);
+        animation: pulse 1s infinite;
+      }
+      #status-bar.waiting .dot {
+        background: var(--blue);
+      }
+      #status-bar.error .dot {
+        background: var(--red);
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+
+      .meta {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--muted);
+        display: flex;
+        gap: 12px;
+      }
+
+      /* Buttons */
+      button {
+        padding: 7px 14px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: opacity 0.15s;
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .btn-blue {
+        background: var(--blue);
+        color: #fff;
+      }
+      .btn-green {
+        background: var(--green);
+        color: #fff;
+      }
+      .btn-red {
+        background: var(--red);
+        color: #fff;
+      }
+      .btn-ghost {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+
+      .btn-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+
+      /* Workflow textarea */
+      textarea {
+        width: 100%;
+        min-height: 260px;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 11px;
+        resize: vertical;
+        line-height: 1.5;
+      }
+
+      /* Conversation */
+      #chat {
+        height: 360px;
+        overflow-y: auto;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 12px;
+        background: #fafbfc;
+        margin-bottom: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .bubble {
+        padding: 9px 13px;
+        border-radius: 12px;
+        max-width: 85%;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .bubble.user {
+        background: var(--blue);
+        color: #fff;
+        align-self: flex-end;
+        border-bottom-right-radius: 3px;
+      }
+      .bubble.assistant {
+        background: #e8eef5;
+        align-self: flex-start;
+        border-bottom-left-radius: 3px;
+      }
+      .bubble.system {
+        background: #fff8dc;
+        color: #7a6000;
+        align-self: center;
+        font-size: 12px;
+        font-style: italic;
+        border-radius: 6px;
+      }
+      .bubble.error {
+        background: #ffeef0;
+        color: var(--red);
+        align-self: center;
+      }
+
+      /* Input row */
+      .input-row {
+        display: flex;
+        gap: 8px;
+      }
+      .input-row input {
+        flex: 1;
+        padding: 9px 12px;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        font-size: 13px;
+      }
+      .input-row input:focus {
+        outline: 2px solid var(--blue);
+      }
+
+      /* Turn counter */
+      #turn-info {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 6px;
+        text-align: right;
+      }
+
+      /* HITL panel */
+      #hitl-panel {
+        display: none;
+        border: 2px solid var(--yellow);
+        border-radius: var(--radius);
+        padding: 14px;
+        background: #fffdf0;
+        margin-bottom: 10px;
+      }
+      #hitl-panel h3 {
+        color: #8a6800;
+        text-transform: none;
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
+      #hitl-prompt-preview {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 8px;
+        font-family: monospace;
+        font-size: 12px;
+        white-space: pre-wrap;
+        margin-bottom: 10px;
+        max-height: 120px;
+        overflow-y: auto;
+      }
+      #hitl-edit-area {
+        display: none;
+        margin-bottom: 8px;
+      }
+      #hitl-edit-area textarea {
+        min-height: 80px;
+      }
+
+      /* Logs */
+      #logs {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 10px;
+        border-radius: 5px;
+        max-height: 160px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 11px;
+      }
+      .log {
+        margin-bottom: 3px;
+      }
+      .log.ok {
+        color: #4ec9b0;
+      }
+      .log.warn {
+        color: #dcdcaa;
+      }
+      .log.err {
+        color: #f44747;
+      }
+
+      header {
+        max-width: 1100px;
+        margin: 0 auto 12px;
+      }
+      .subtitle {
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>⚡ Workflow Builder</h1>
+      <p class="subtitle">
+        AI-driven conversation workflows with human-in-the-loop support
+      </p>
+    </header>
+
+    <!-- Status bar -->
+    <div id="status-bar">
+      <div class="dot"></div>
+      <span id="status-text">Disconnected</span>
+      <div class="meta">
+        <span id="exec-badge" style="display: none"
+          >exec: <code id="exec-id-display"></code
+        ></span>
+        <span id="turn-badge" style="display: none"
+          >turns: <span id="turn-display">0</span>/<span id="max-display"
+            >20</span
+          ></span
+        >
+      </div>
+    </div>
+
+    <div class="layout">
+      <!-- LEFT: workflow editor + logs -->
+      <div>
+        <div class="card" style="margin-bottom: 16px">
+          <h3>Connection</h3>
+          <div class="btn-row">
+            <button id="btn-connect" class="btn-blue" onclick="connect()">
+              Connect
+            </button>
+            <button
+              id="btn-disconnect"
+              class="btn-ghost"
+              onclick="disconnect()"
+              disabled
+            >
+              Disconnect
+            </button>
+          </div>
+
+          <div style="margin-bottom: 8px">
+            <label style="font-size: 12px; color: var(--muted)"
+              >Server URL</label
+            >
+            <input
+              id="server-url"
+              type="text"
+              value="ws://localhost:8000"
+              style="
+                width: 100%;
+                padding: 6px 10px;
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                font-size: 12px;
+                margin-top: 4px;
+              "
+            />
+          </div>
+
+          <div style="margin-bottom: 4px">
+            <label style="font-size: 12px; color: var(--muted)"
+              >Max turns (0 = unlimited)</label
+            >
+            <input
+              id="max-turns"
+              type="number"
+              value="20"
+              min="0"
+              max="100"
+              style="
+                width: 80px;
+                padding: 6px 8px;
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                font-size: 12px;
+                margin-left: 8px;
+              "
+            />
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 16px">
+          <h3>Workflow Definition (JSON)</h3>
+          <textarea id="workflow-json"></textarea>
+          <div class="btn-row" style="margin-top: 10px">
+            <button
+              id="btn-set-workflow"
+              class="btn-blue"
+              onclick="setWorkflow()"
+              disabled
+            >
+              Set Workflow
+            </button>
+            <button class="btn-ghost" onclick="loadExample()">
+              Load Example
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Logs</h3>
+          <div id="logs"><span class="log">Ready.</span></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: conversation -->
+      <div>
+        <div class="card">
+          <h3>Conversation</h3>
+
+          <div id="turn-info">–</div>
+          <div id="chat">
+            <div class="bubble system">
+              Connect and set a workflow to start.
+            </div>
+          </div>
+
+          <!-- HITL panel -->
+          <div id="hitl-panel">
+            <h3>⚠️ Human Review Required</h3>
+            <p style="font-size: 12px; color: var(--muted); margin-bottom: 8px">
+              Review the prompt below before it is sent to the AI.
+            </p>
+            <div id="hitl-prompt-preview"></div>
+            <div id="hitl-edit-area">
+              <label style="font-size: 12px; color: var(--muted)"
+                >Edit prompt:</label
+              >
+              <textarea id="hitl-edit-input"></textarea>
+            </div>
+            <div class="btn-row">
+              <button class="btn-green" onclick="hitlDecide('approve')">
+                ✓ Approve
+              </button>
+              <button class="btn-ghost" onclick="toggleHitlEdit()">
+                ✏️ Edit
+              </button>
+              <button class="btn-red" onclick="hitlDecide('reject')">
+                ✗ Reject
+              </button>
+            </div>
+          </div>
+
+          <div class="input-row">
+            <input
+              id="user-input"
+              type="text"
+              placeholder="Type your reply…"
+              disabled
+              onkeydown="if (event.key === 'Enter') sendReply();"
+            />
+            <button
+              id="btn-action"
+              class="btn-green"
+              onclick="handleAction()"
+              disabled
+            >
+              Start
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ─── State ────────────────────────────────────────────────────────────────────
+      let ws = null;
+      let execId = null;
+      let phase = "idle"; // idle | running | waiting_user | waiting_hitl | done
+
+      const clientId = "c_" + Math.random().toString(36).slice(2, 10);
+
+      // ─── DOM refs ─────────────────────────────────────────────────────────────────
+      const $statusBar = document.getElementById("status-bar");
+      const $statusText = document.getElementById("status-text");
+      const $chat = document.getElementById("chat");
+      const $logs = document.getElementById("logs");
+      const $userInput = document.getElementById("user-input");
+      const $btnAction = document.getElementById("btn-action");
+      const $hitlPanel = document.getElementById("hitl-panel");
+      const $hitlPreview = document.getElementById("hitl-prompt-preview");
+      const $hitlEdit = document.getElementById("hitl-edit-area");
+      const $hitlEditIn = document.getElementById("hitl-edit-input");
+      const $turnInfo = document.getElementById("turn-info");
+      const $execBadge = document.getElementById("exec-badge");
+      const $execDisplay = document.getElementById("exec-id-display");
+      const $turnBadge = document.getElementById("turn-badge");
+      const $turnDisplay = document.getElementById("turn-display");
+      const $maxDisplay = document.getElementById("max-display");
+
+      // ─── Status helpers ───────────────────────────────────────────────────────────
+      function setStatus(text, cls) {
+        $statusBar.className = cls;
+        $statusText.textContent = text;
+      }
+
+      function setPhase(p) {
+        phase = p;
+        switch (p) {
+          case "idle":
+            setStatus("Connected — workflow ready", "connected");
+            $btnAction.textContent = "Start";
+            $btnAction.disabled = false;
+            $userInput.disabled = true;
+            $hitlPanel.style.display = "none";
+            break;
+          case "running":
+            setStatus("Running…", "running");
+            $btnAction.disabled = true;
+            $userInput.disabled = true;
+            $hitlPanel.style.display = "none";
+            break;
+          case "waiting_user":
+            setStatus("Waiting for your reply", "waiting");
+            $btnAction.textContent = "Send";
+            $btnAction.disabled = false;
+            $userInput.disabled = false;
+            $userInput.focus();
+            $hitlPanel.style.display = "none";
+            break;
+          case "waiting_hitl":
+            setStatus("Waiting for review", "waiting");
+            $btnAction.disabled = true;
+            $userInput.disabled = true;
+            $hitlPanel.style.display = "block";
+            break;
+          case "done":
+            setStatus("Complete", "connected");
+            $btnAction.textContent = "Start Again";
+            $btnAction.disabled = false;
+            $userInput.disabled = true;
+            $hitlPanel.style.display = "none";
+            execId = null;
+            $execBadge.style.display = "none";
+            $turnBadge.style.display = "none";
+            break;
+        }
+      }
+
+      function updateTurns(current, max) {
+        $turnDisplay.textContent = current;
+        $maxDisplay.textContent = max || "∞";
+        $turnBadge.style.display = "inline";
+        $turnInfo.textContent = `Turn ${current} of ${max || "∞"}`;
+      }
+
+      // ─── Logging ──────────────────────────────────────────────────────────────────
+      function log(msg, cls = "") {
+        const el = document.createElement("span");
+        el.className = "log " + cls;
+        const time = new Date().toLocaleTimeString();
+        el.textContent = `[${time}] ${msg}\n`;
+        $logs.appendChild(el);
+        $logs.scrollTop = $logs.scrollHeight;
+      }
+
+      // ─── Chat bubbles ─────────────────────────────────────────────────────────────
+      function addBubble(text, role) {
+        const el = document.createElement("div");
+        el.className = "bubble " + role;
+        el.textContent = text;
+        $chat.appendChild(el);
+        $chat.scrollTop = $chat.scrollHeight;
+      }
+
+      // ─── WebSocket ────────────────────────────────────────────────────────────────
+      function connect() {
+        const base = document.getElementById("server-url").value.trim();
+        const url = `${base}/ws/${clientId}`;
+
+        setStatus("Connecting…", "running");
+        ws = new WebSocket(url);
+
+        ws.onopen = () => {
+          setStatus("Connected", "connected");
+          log("Connected", "ok");
+          document.getElementById("btn-connect").disabled = true;
+          document.getElementById("btn-disconnect").disabled = false;
+          document.getElementById("btn-set-workflow").disabled = false;
+        };
+
+        ws.onmessage = (e) => handleMessage(JSON.parse(e.data));
+
+        ws.onerror = () => {
+          setStatus("Connection error", "error");
+          log("WebSocket error", "err");
+        };
+
+        ws.onclose = () => {
+          setStatus("Disconnected", "");
+          log("Disconnected");
+          document.getElementById("btn-connect").disabled = false;
+          document.getElementById("btn-disconnect").disabled = true;
+          document.getElementById("btn-set-workflow").disabled = true;
+          $btnAction.disabled = true;
+          $userInput.disabled = true;
+          phase = "idle";
+          ws = null;
+        };
+      }
+
+      function disconnect() {
+        if (ws) {
+          ws.close();
+          ws = null;
+        }
+      }
+
+      function send(obj) {
+        if (ws && ws.readyState === WebSocket.OPEN)
+          ws.send(JSON.stringify(obj));
+        else log("Not connected", "err");
+      }
+
+      // ─── Message handler ──────────────────────────────────────────────────────────
+      function handleMessage(data) {
+        const t = data.type;
+        log(t + (data.execution_id ? ` [${data.execution_id.slice(-6)}]` : ""));
+
+        // Track execution ID
+        if (data.execution_id && !execId) {
+          execId = data.execution_id;
+          $execDisplay.textContent = execId.slice(-8);
+          $execBadge.style.display = "inline";
+        }
+
+        // Track turns
+        if (data.current_state) {
+          const cs = data.current_state;
+          if (typeof cs.turn_count === "number") {
+            updateTurns(cs.turn_count, cs.max_turns);
+          }
+        }
+
+        switch (t) {
+          case "connected":
+            log(data.message, "ok");
+            break;
+
+          case "workflow_set":
+            log("Workflow ready", "ok");
+            setPhase("idle");
+            addBubble("Workflow loaded. Click Start to begin.", "system");
+            break;
+
+          case "workflow_started":
+          case "workflow_resumed":
+            setPhase("running");
+            addBubble(data.message, "system");
+            break;
+
+          case "node_completed":
+            if (data.message) addBubble(data.message, "assistant");
+            break;
+
+          case "waiting_for_input":
+            // current_output already shown by node_completed — don't duplicate
+            setPhase("waiting_user");
+            break;
+
+          case "hitl_request":
+            $hitlPreview.textContent = data.pending_prompt || data.message;
+            $hitlEditIn.value = data.pending_prompt || "";
+            $hitlEdit.style.display = "none";
+            setPhase("waiting_hitl");
+            addBubble("⚠️ Human review required before proceeding.", "system");
+            break;
+
+          case "input_received":
+            setPhase("running");
+            break;
+
+          case "hitl_decision_received":
+            setPhase("running");
+            log(`HITL: ${data.message}`, "ok");
+            break;
+
+          case "workflow_completed":
+            // final_output was already shown by node_completed — don't duplicate
+            addBubble("✅ Workflow completed.", "system");
+            if (
+              data.extracted_variables &&
+              Object.keys(data.extracted_variables).length > 0
+            ) {
+              addBubble(
+                "📊 Extracted: " +
+                  JSON.stringify(data.extracted_variables, null, 2),
+                "system",
+              );
+            }
+            setPhase("done");
+            log("Workflow completed", "ok");
+            break;
+
+          case "workflow_ended":
+            // Only show final_output if it wasn't already shown as node_completed
+            if (data.final_output && data.reason !== "workflow_complete") {
+              addBubble(data.final_output, "assistant");
+            }
+            addBubble(`Conversation ended (${data.reason}).`, "system");
+            if (
+              data.extracted_variables &&
+              Object.keys(data.extracted_variables).length > 0
+            ) {
+              addBubble(
+                "📊 Extracted: " +
+                  JSON.stringify(data.extracted_variables, null, 2),
+                "system",
+              );
+            }
+            setPhase("done");
+            log("Ended: " + data.reason, "warn");
+            break;
+
+          case "workflow_error":
+          case "error":
+            addBubble("❌ " + (data.message || data.error), "error");
+            setStatus("Error", "error");
+            log("Error: " + (data.message || data.error), "err");
+            setPhase("done");
+            break;
+
+          case "pong":
+            break;
+          default:
+            log("Unknown: " + t, "warn");
+        }
+      }
+
+      // ─── Actions ──────────────────────────────────────────────────────────────────
+      function setWorkflow() {
+        try {
+          const wf = JSON.parse(document.getElementById("workflow-json").value);
+          send({ type: "set_workflow", workflow: wf });
+        } catch (e) {
+          log("Invalid JSON: " + e.message, "err");
+        }
+      }
+
+      function startWorkflow() {
+        if (!ws) {
+          log("Not connected", "err");
+          return;
+        }
+        execId = null;
+        $chat.innerHTML = "";
+        const maxTurns =
+          parseInt(document.getElementById("max-turns").value) || 20;
+        send({
+          type: "execute",
+          input: { input: "start" },
+          max_turns: maxTurns,
+        });
+        setPhase("running");
+      }
+
+      function sendReply() {
+        const text = $userInput.value.trim();
+        if (!text) return;
+        if (!execId) {
+          log("No execution ID", "err");
+          return;
+        }
+        addBubble(text, "user");
+        $userInput.value = "";
+        send({ type: "respond", execution_id: execId, input: text });
+        setPhase("running");
+      }
+
+      function handleAction() {
+        if (phase === "waiting_user") sendReply();
+        else startWorkflow();
+      }
+
+      // ─── HITL helpers ─────────────────────────────────────────────────────────────
+      let hitlEditMode = false;
+
+      function toggleHitlEdit() {
+        hitlEditMode = !hitlEditMode;
+        $hitlEdit.style.display = hitlEditMode ? "block" : "none";
+      }
+
+      function hitlDecide(type) {
+        if (!execId) {
+          log("No execution ID", "err");
+          return;
+        }
+        const decision = { type };
+        if (type === "edit") {
+          decision.edited_prompt = $hitlEditIn.value.trim();
+          if (!decision.edited_prompt) {
+            log("Enter edited prompt", "warn");
+            return;
+          }
+        }
+        if (type === "reject") {
+          decision.reason = prompt("Reason for rejection?") || "Rejected.";
+        }
+        send({ type: "hitl_decision", execution_id: execId, decision });
+        setPhase("running");
+      }
+
+      // ─── Example workflow ─────────────────────────────────────────────────────────
+      function loadExample() {
+        const example = {
+          name: "sales_qualification",
+          nodes: [
+            { id: "in", type: "input", data: {}, position: { x: 0, y: 0 } },
+            {
+              id: "greet",
+              type: "prompt",
+              data: {
+                systemPrompt: "You are a friendly sales assistant.",
+                userPrompt:
+                  "Greet the user warmly and ask if they have 2 minutes to chat about improving their workflow.",
+                model: "gpt-4o-mini",
+                temperature: 0.7,
+              },
+              position: { x: 200, y: 0 },
+            },
+            {
+              id: "wait_reply",
+              type: "interactive",
+              data: { promptMessage: "Waiting for user reply…", timeout: 300 },
+              position: { x: 400, y: 0 },
+            },
+            {
+              id: "interested",
+              type: "prompt",
+              data: {
+                systemPrompt: "You are a sales assistant. Be concise.",
+                userPrompt:
+                  "Great, they're interested! Ask about their team size and main workflow pain point.",
+                model: "gpt-4o-mini",
+                temperature: 0.7,
+                variableExtractionPlan: {
+                  output: [
+                    {
+                      title: "team_size",
+                      description: "How large is their team",
+                      type: "string",
+                    },
+                    {
+                      title: "pain_point",
+                      description: "Their main workflow challenge",
+                      type: "string",
+                    },
+                  ],
+                },
+              },
+              position: { x: 600, y: -80 },
+            },
+            {
+              id: "busy",
+              type: "prompt",
+              data: {
+                systemPrompt: "You are understanding and professional.",
+                userPrompt:
+                  "They're busy. Offer to schedule a 10-minute call at a better time and ask for their email.",
+                model: "gpt-4o-mini",
+                temperature: 0.7,
+                variableExtractionPlan: {
+                  output: [
+                    {
+                      title: "email",
+                      description: "User email for follow-up",
+                      type: "string",
+                    },
+                  ],
+                },
+              },
+              position: { x: 600, y: 0 },
+            },
+            {
+              id: "not_interest",
+              type: "prompt",
+              data: {
+                systemPrompt: "You are professional and gracious.",
+                userPrompt:
+                  "They're not interested. Thank them sincerely and wish them well.",
+                model: "gpt-4o-mini",
+                temperature: 0.7,
+              },
+              position: { x: 600, y: 80 },
+            },
+            { id: "out", type: "output", data: {}, position: { x: 800, y: 0 } },
+          ],
+          edges: [
+            { id: "e1", source: "in", target: "greet", type: "default" },
+            {
+              id: "e2",
+              source: "greet",
+              target: "wait_reply",
+              type: "default",
+            },
+            {
+              id: "e3",
+              source: "wait_reply",
+              target: "interested",
+              type: "conditional",
+              data: {
+                condition: "User agreed, is interested, or wants to talk",
+              },
+            },
+            {
+              id: "e4",
+              source: "wait_reply",
+              target: "busy",
+              type: "conditional",
+              data: { condition: "User is busy or wants to reschedule" },
+            },
+            {
+              id: "e5",
+              source: "wait_reply",
+              target: "not_interest",
+              type: "conditional",
+              data: { condition: "User declined or is not interested" },
+            },
+            { id: "e6", source: "interested", target: "out", type: "default" },
+            { id: "e7", source: "busy", target: "out", type: "default" },
+            {
+              id: "e8",
+              source: "not_interest",
+              target: "out",
+              type: "default",
+            },
+          ],
+        };
+        document.getElementById("workflow-json").value = JSON.stringify(
+          example,
+          null,
+          2,
+        );
+      }
+
+      // ─── Init ─────────────────────────────────────────────────────────────────────
+      document.addEventListener("DOMContentLoaded", () => {
+        loadExample();
+        setInterval(() => {
+          if (ws && ws.readyState === WebSocket.OPEN)
+            ws.send(JSON.stringify({ type: "ping" }));
+        }, 30000);
+      });
+    </script>
+  </body>
+</html>
