@@ -1,6 +1,3 @@
-Readme · MD
-Copy
-
 # Workflow Builder
 
 AI-driven conversation workflows over WebSocket.
