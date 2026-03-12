@@ -8,7 +8,7 @@ AI-driven conversation workflows over WebSocket.
 
 ```bash
 # Install dependencies
-pip install fastapi uvicorn langgraph langchain-openai python-dotenv
+pip install -r requirements.txt
 
 # Add your OpenAI key
 echo "OPENAI_API_KEY=sk-..." > .env
